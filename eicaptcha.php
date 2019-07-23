@@ -34,7 +34,7 @@ class EiCaptcha extends Module
 
     public function __construct()
     {
-        $this->author = 'hhennes';
+        $this->author = 'bdesprez (fork from hhennes work)';
         $this->name = 'eicaptcha';
         $this->tab = 'front_office_features';
         $this->version = '0.4.17';
@@ -60,6 +60,7 @@ class EiCaptcha extends Module
                 || !$this->registerHook('displayCustomerAccountForm') 
                 || !$this->registerHook('contactFormAccess')
                 || !$this->registerHook('actionBeforeSubmitAccount')
+                || !$this->registerHook('actionObjectCustomerAddBefore')
                 || !Configuration::updateValue('CAPTCHA_ENABLE_ACCOUNT', 0) 
                 || !Configuration::updateValue('CAPTCHA_ENABLE_CONTACT', 0) 
                 || !Configuration::updateValue('CAPTCHA_THEME', 0)
@@ -439,6 +440,33 @@ class EiCaptcha extends Module
                 $this->context->controller->errors[] = $this->l('incorrect response to CAPTCHA challenge. Please try again.');
             }
         }
+    }
+
+    /**
+     * Spam checking
+     * @param Customer $customer
+     * @return boolean
+     */
+    private function isSpam(Customer $customer)
+    {
+        $urlPattern = '#(www.)?[a-zA-Z0-9]+\.[a-zA-Z]+/?#';
+        $champs = ['lastname', 'firstname'];
+        foreach ($champs as $champ) {
+            if (preg_match($urlPattern, $customer->$champ)) {
+                $customer->$champ = '<!!' . $customer->$champ . '!!>';
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if customer account can be created
+     * @param $params
+     */
+    public function hookActionObjectCustomerAddBefore($params)
+    {
+        $this->isSpam($params['object']);
     }
 
     /**
